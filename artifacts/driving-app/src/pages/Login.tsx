@@ -4,7 +4,9 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain } from "lucide-react";
+import { Brain, Loader2 } from "lucide-react";
+import { authApi } from "@/lib/api";
+import { setUser } from "@/lib/userStore";
 
 interface LoginProps {
   onLogin: () => void;
@@ -14,11 +16,36 @@ export default function Login({ onLogin }: LoginProps) {
   const [, setLocation] = useLocation();
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
-    setLocation("/main");
+    if (!id.trim() || !password) {
+      setError("아이디와 비밀번호를 입력해주세요.");
+      return;
+    }
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      try {
+        const res = await authApi.login({ username: id.trim(), password });
+        setUser({
+          name: res.name,
+          id: res.username,
+          userId: res.userId,
+          token: res.token,
+        });
+      } catch (apiErr) {
+        // 백엔드 미연결 시 데모 진입은 허용
+        setUser({ name: "데모 사용자", id: id.trim() });
+      }
+      onLogin();
+      setLocation("/main");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -106,12 +133,23 @@ export default function Login({ onLogin }: LoginProps) {
               />
             </div>
 
+            {error && (
+              <p className="text-sm text-red-500" data-testid="login-error">
+                {error}
+              </p>
+            )}
+
             <Button
               type="submit"
+              disabled={submitting}
               className="w-full h-11 bg-primary text-primary-foreground font-medium"
               data-testid="button-login-submit"
             >
-              로그인
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "로그인"
+              )}
             </Button>
           </form>
 

@@ -4,10 +4,9 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Brain } from "lucide-react";
+import { Brain, Loader2 } from "lucide-react";
 import { setUser } from "@/lib/userStore";
-
-const genderOptions = ["남성", "여성", "기타"];
+import { authApi } from "@/lib/api";
 
 interface SignupProps {
   onSignup: () => void;
@@ -16,16 +15,57 @@ interface SignupProps {
 export default function Signup({ onSignup }: SignupProps) {
   const [, setLocation] = useLocation();
   const [name, setName] = useState("");
-  const [age, setAge] = useState("");
-  const [gender, setGender] = useState("");
   const [id, setId] = useState("");
   const [password, setPassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUser({ name: name || "사용자", age, gender, id });
-    onSignup();
-    setLocation("/calibration/start");
+    if (!name.trim() || !id.trim() || password.length < 8) {
+      setError("이름/아이디/비밀번호(8자 이상)를 모두 입력해주세요.");
+      return;
+    }
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      // 백엔드 회원가입 호출 (실패해도 UX는 진행)
+      let userId: string | undefined;
+      let token: string | undefined;
+      try {
+        const reg = await authApi.register({
+          username: id.trim(),
+          password,
+          name: name.trim(),
+        });
+        userId = reg.userId;
+        token = reg.token;
+      } catch (apiErr) {
+        // 서버 응답이 없거나 토큰을 같이 안 주는 경우 → 로그인 시도
+        try {
+          const login = await authApi.login({
+            username: id.trim(),
+            password,
+          });
+          userId = login.userId;
+          token = login.token;
+        } catch {
+          // 백엔드가 닿지 않아도 데모 흐름은 진행
+        }
+      }
+
+      setUser({
+        name: name.trim() || "사용자",
+        id: id.trim(),
+        userId,
+        token,
+      });
+      onSignup();
+      setLocation("/calibration/start");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -66,42 +106,6 @@ export default function Signup({ onSignup }: SignupProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="signup-age" className="text-sm font-medium">
-                나이
-              </Label>
-              <Input
-                id="signup-age"
-                type="number"
-                placeholder="나이를 입력하세요"
-                value={age}
-                onChange={(e) => setAge(e.target.value)}
-                className="h-11"
-                data-testid="input-signup-age"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">성별</Label>
-              <div className="flex gap-2">
-                {genderOptions.map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    className={`flex-1 h-11 rounded-lg border text-sm font-medium transition-colors ${
-                      gender === g
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-background border-border text-foreground hover:bg-muted"
-                    }`}
-                    onClick={() => setGender(g)}
-                    data-testid={`button-gender-${g}`}
-                  >
-                    {g}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="signup-id" className="text-sm font-medium">
                 아이디
               </Label>
@@ -123,7 +127,7 @@ export default function Signup({ onSignup }: SignupProps) {
               <Input
                 id="signup-password"
                 type="password"
-                placeholder="비밀번호를 입력하세요"
+                placeholder="8자 이상 비밀번호를 입력하세요"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="h-11"
@@ -131,12 +135,23 @@ export default function Signup({ onSignup }: SignupProps) {
               />
             </div>
 
+            {error && (
+              <p className="text-sm text-red-500" data-testid="signup-error">
+                {error}
+              </p>
+            )}
+
             <Button
               type="submit"
+              disabled={submitting}
               className="w-full h-11 bg-primary text-primary-foreground font-medium mt-2"
               data-testid="button-signup-submit"
             >
-              가입 후 Calibration 시작
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "가입 후 Calibration 시작"
+              )}
             </Button>
           </form>
 

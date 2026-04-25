@@ -10,7 +10,8 @@ export default function CalibrationStep5() {
 
   const handleDone = () => {
     setGoing(true);
-    setTimeout(() => setLocation("/calibration/result"), 900);
+    // 회원가입 흐름: Calibration 완료 → 디바이스 등록 → 홈
+    setTimeout(() => setLocation("/signup/devices"), 600);
   };
 
   return (
@@ -42,7 +43,10 @@ export default function CalibrationStep5() {
             <div className="w-28 h-28 rounded-full bg-green-50 border-2 border-green-200 flex items-center justify-center">
               <CheckCircle2 className="w-16 h-16 text-green-500" />
             </div>
-            <p className="text-base font-semibold text-foreground">촬영이 완료되었습니다</p>
+            <p className="text-base font-semibold text-foreground">Calibration이 완료되었습니다</p>
+            <p className="text-xs text-muted-foreground text-center">
+              마지막 단계로 사용할 디바이스를 등록할게요
+            </p>
           </motion.div>
         </div>
         <div className="px-6 pb-6">
@@ -52,7 +56,7 @@ export default function CalibrationStep5() {
             disabled={going}
             data-testid="button-step5-done"
           >
-            촬영이 완료되었습니다
+            디바이스 등록하기
           </Button>
         </div>
       </motion.div>

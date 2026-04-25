@@ -2,7 +2,16 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState, useRef } from "react";
-import { ArrowUp, ArrowLeft, ArrowRight, OctagonX } from "lucide-react";
+import {
+  ArrowUp,
+  ArrowLeft,
+  ArrowRight,
+  OctagonX,
+  User as UserIcon,
+  Wifi,
+  WifiOff,
+} from "lucide-react";
+import { getStompClient } from "@/lib/websocket";
 
 type Direction = "직진" | "왼쪽" | "오른쪽" | "정지";
 
@@ -43,6 +52,13 @@ const DIR_CONFIG: Record<Direction, {
     border: "rgba(245,158,11,0.25)",
     description: "정지 상태",
   },
+};
+
+const INTENT_TO_DIRECTION: Record<string, Direction> = {
+  FORWARD: "직진",
+  LEFT: "왼쪽",
+  RIGHT: "오른쪽",
+  STOP: "정지",
 };
 
 function getRiskColor(score: number) {
@@ -187,25 +203,74 @@ export default function Main() {
   const [riskScore, setRiskScore] = useState(28);
   const [dirIdx, setDirIdx] = useState(0);
   const [isActive, setIsActive] = useState(true);
+  const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
+  const [sessionId] = useState<string>("sess-002"); // 데모용 세션 ID
   const tickRef = useRef(0);
+  const fallbackRef = useRef<number | null>(null);
 
+  // ---- WebSocket(STOMP) 연결 ----
   useEffect(() => {
-    if (!isActive) return;
-    const id = setInterval(() => {
+    let unsubscribe: (() => void) | undefined;
+    let cancelled = false;
+    setWsState("connecting");
+
+    getStompClient()
+      .then((client) => {
+        if (cancelled) return;
+        setWsState("connected");
+        unsubscribe = client.subscribe(`/topic/sessions/${sessionId}`, (msg) => {
+          try {
+            const payload = JSON.parse(msg.body);
+            if (typeof payload.riskScore === "number") {
+              setRiskScore(Math.round(payload.riskScore * 100));
+            }
+            const intent: string | undefined = payload.intent ?? payload.command;
+            if (intent && INTENT_TO_DIRECTION[intent]) {
+              const target = INTENT_TO_DIRECTION[intent];
+              const idx = DIRECTIONS.indexOf(target);
+              if (idx >= 0) setDirIdx(idx);
+            }
+          } catch {
+            /* ignore non-JSON */
+          }
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setWsState("offline");
+      });
+
+    return () => {
+      cancelled = true;
+      if (unsubscribe) unsubscribe();
+    };
+  }, [sessionId]);
+
+  // 데모용 폴백 시뮬레이션 (서버 미연결 시에만)
+  useEffect(() => {
+    if (wsState === "connected" || !isActive) {
+      if (fallbackRef.current) {
+        window.clearInterval(fallbackRef.current);
+        fallbackRef.current = null;
+      }
+      return;
+    }
+    fallbackRef.current = window.setInterval(() => {
       tickRef.current += 1;
       setRiskScore((prev) => {
         const delta = (Math.random() - 0.48) * 6;
         return Math.min(95, Math.max(5, Math.round(prev + delta)));
       });
       if (tickRef.current % 4 === 0) {
-        setDirIdx((prev) => {
-          const shift = Math.floor(Math.random() * DIRECTIONS.length);
-          return shift;
-        });
+        setDirIdx(Math.floor(Math.random() * DIRECTIONS.length));
       }
     }, 1200);
-    return () => clearInterval(id);
-  }, [isActive]);
+    return () => {
+      if (fallbackRef.current) {
+        window.clearInterval(fallbackRef.current);
+        fallbackRef.current = null;
+      }
+    };
+  }, [isActive, wsState]);
 
   return (
     <motion.div
@@ -219,18 +284,21 @@ export default function Main() {
           <h2 className="text-base font-semibold text-foreground">실시간 측정</h2>
           <p className="text-xs text-muted-foreground">현재 운행 상태</p>
         </div>
-        <button
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-            isActive
-              ? "bg-green-50 border-green-200 text-green-700"
-              : "bg-muted border-border text-muted-foreground"
-          }`}
-          onClick={() => setIsActive((v) => !v)}
-          data-testid="btn-toggle-live"
-        >
-          <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-          {isActive ? "Live" : "일시정지"}
-        </button>
+        <div className="flex items-center gap-2">
+          <WsBadge state={wsState} />
+          <button
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+              isActive
+                ? "bg-green-50 border-green-200 text-green-700"
+                : "bg-muted border-border text-muted-foreground"
+            }`}
+            onClick={() => setIsActive((v) => !v)}
+            data-testid="btn-toggle-live"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
+            {isActive ? "Live" : "일시정지"}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 min-h-0">
@@ -269,23 +337,57 @@ export default function Main() {
         </motion.div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Button
           variant="outline"
-          className="flex-1 h-12 text-sm font-medium"
+          className="h-12 text-sm font-medium"
           onClick={() => setLocation("/logs")}
           data-testid="button-view-logs"
         >
           운행 로그 다시 보기
         </Button>
         <Button
-          className="flex-1 h-12 text-sm font-medium bg-primary text-primary-foreground"
+          variant="outline"
+          className="h-12 text-sm font-medium"
           onClick={() => setLocation("/calibration/result")}
           data-testid="button-calibration-result"
         >
-          calibration 측정 결과 살펴보기
+          Calibration 결과
+        </Button>
+        <Button
+          className="h-12 text-sm font-medium bg-primary text-primary-foreground"
+          onClick={() => setLocation("/mypage")}
+          data-testid="button-mypage"
+        >
+          <UserIcon className="w-4 h-4 mr-1.5" />
+          마이페이지
         </Button>
       </div>
     </motion.div>
+  );
+}
+
+function WsBadge({ state }: { state: "idle" | "connecting" | "connected" | "offline" }) {
+  if (state === "connected") {
+    return (
+      <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200">
+        <Wifi className="w-3 h-3" />
+        WS 연결됨
+      </span>
+    );
+  }
+  if (state === "connecting") {
+    return (
+      <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+        <Wifi className="w-3 h-3 animate-pulse" />
+        연결 중
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-muted text-muted-foreground border border-border">
+      <WifiOff className="w-3 h-3" />
+      오프라인
+    </span>
   );
 }

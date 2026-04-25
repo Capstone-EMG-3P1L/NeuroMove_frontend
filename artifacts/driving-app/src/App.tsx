@@ -8,9 +8,11 @@ import { AnimatePresence } from "framer-motion";
 import NotFound from "@/pages/not-found";
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
+import SignupDevices from "@/pages/SignupDevices";
 import Main from "@/pages/Main";
 import Logs from "@/pages/Logs";
 import LogDetail from "@/pages/LogDetail";
+import MyPage from "@/pages/MyPage";
 import CalibrationResult from "@/pages/calibration/Result";
 import CalibrationStart from "@/pages/calibration/Start";
 import CalibrationStep2 from "@/pages/calibration/Step2";
@@ -20,7 +22,8 @@ import CalibrationStep5 from "@/pages/calibration/Step5";
 
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { clearUser } from "@/lib/userStore";
+import { clearUser, getUser } from "@/lib/userStore";
+import { disconnectStomp } from "@/lib/websocket";
 
 const queryClient = new QueryClient();
 
@@ -62,13 +65,17 @@ function ProtectedLayout({
 }
 
 function Router() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // 페이지 새로고침 시에도 로그인 상태 유지
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(
+    () => !!getUser(),
+  );
   const [location] = useLocation();
 
   const handleLogin = () => setIsAuthenticated(true);
   const handleLogout = () => {
     setIsAuthenticated(false);
     clearUser();
+    disconnectStomp();
   };
 
   return (
@@ -80,6 +87,11 @@ function Router() {
         <Route path="/signup">
           <Signup onSignup={handleLogin} />
         </Route>
+        <Route path="/signup/devices">
+          <ProtectedLayout isAuthenticated={isAuthenticated} showSidebar={false}>
+            <SignupDevices />
+          </ProtectedLayout>
+        </Route>
         <Route path="/">
           <ProtectedLayout isAuthenticated={isAuthenticated} onLogout={handleLogout}>
             <Main />
@@ -88,6 +100,11 @@ function Router() {
         <Route path="/main">
           <ProtectedLayout isAuthenticated={isAuthenticated} onLogout={handleLogout}>
             <Main />
+          </ProtectedLayout>
+        </Route>
+        <Route path="/mypage">
+          <ProtectedLayout isAuthenticated={isAuthenticated} onLogout={handleLogout}>
+            <MyPage />
           </ProtectedLayout>
         </Route>
         <Route path="/logs">

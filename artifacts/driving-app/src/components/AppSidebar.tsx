@@ -42,14 +42,22 @@ export function AppSidebar({ onLogout }: AppSidebarProps) {
           <h3 className="font-semibold text-sm text-sidebar-foreground">
             {user?.name ?? "사용자"}
           </h3>
-          {user?.age && user?.gender && (
+          {user?.id && (
             <p className="text-xs text-sidebar-foreground/60 mt-0.5">
-              {user.age}세 · {user.gender}
+              @{user.id}
             </p>
           )}
         </div>
 
         <div className="flex flex-col gap-2 w-full mt-2">
+          <Button
+            variant="outline"
+            className="w-full text-xs h-9"
+            onClick={() => setLocation("/mypage")}
+            data-testid="btn-go-mypage"
+          >
+            마이페이지
+          </Button>
           <Button
             variant="outline"
             className="w-full text-xs h-9"
@@ -60,6 +68,7 @@ export function AppSidebar({ onLogout }: AppSidebarProps) {
           </Button>
           <Button
             className="w-full text-xs h-9 bg-primary text-primary-foreground"
+            onClick={() => setLocation("/main")}
             data-testid="btn-start-drive"
           >
             운행 시작
