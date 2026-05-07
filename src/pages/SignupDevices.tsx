@@ -12,6 +12,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { deviceApi } from "@/lib/api";
+import { updateUser } from "@/lib/userStore";
 
 type Step = "emg" | "motor" | "done";
 
@@ -36,6 +37,7 @@ export default function SignupDevices() {
       try {
         const res = await deviceApi.registerEmg(emgName.trim());
         setEmgInfo({ id: res.emgDeviceId, name: res.name });
+        updateUser({ emgDeviceId: res.emgDeviceId });
       } catch {
         // 백엔드 미연결 시에도 흐름은 진행
         setEmgInfo({ id: "emg-pending", name: emgName.trim() });
@@ -57,6 +59,7 @@ export default function SignupDevices() {
       try {
         const res = await deviceApi.registerMotor(motorName.trim());
         setMotorInfo({ id: res.motorDeviceId, name: res.name });
+        updateUser({ motorDeviceId: res.motorDeviceId });
       } catch {
         setMotorInfo({ id: "motor-pending", name: motorName.trim() });
       }
@@ -143,10 +146,10 @@ export default function SignupDevices() {
             </div>
             <Button
               className="w-full h-12 bg-primary text-primary-foreground font-semibold"
-              onClick={() => setLocation("/main")}
+              onClick={() => setLocation("/calibration/start")}
               data-testid="button-finish-signup"
             >
-              홈으로 이동
+              Calibration 시작
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>

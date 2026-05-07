@@ -3,6 +3,11 @@ export interface UserProfile {
   id: string;
   userId?: string;
   token?: string;
+  emgDeviceId?: string;
+  motorDeviceId?: string;
+  calibrationSessionId?: string;
+  profileId?: string;
+  activeSessionId?: string;
 }
 
 const STORAGE_KEY = "nm_user_profile";

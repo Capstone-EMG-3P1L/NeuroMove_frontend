@@ -65,7 +65,16 @@ export interface RegisterResponse {
   userId: string;
   username: string;
   name: string;
-  token?: string;
+  createdAt?: string;
+}
+export interface LoginResponse {
+  accessToken: string;
+  tokenType: string;
+  user: {
+    userId: string;
+    username: string;
+    name: string;
+  };
 }
 export const authApi = {
   register: (body: RegisterRequest) =>
@@ -74,13 +83,10 @@ export const authApi = {
       body: JSON.stringify(body),
     }),
   login: (body: { username: string; password: string }) =>
-    request<{ userId: string; username: string; name: string; token: string }>(
-      "/api/auth/login",
-      {
-        method: "POST",
-        body: JSON.stringify(body),
-      },
-    ),
+    request<LoginResponse>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
 
 // ---------------- Devices ----------------
@@ -135,7 +141,11 @@ export interface UserStatus {
     signalQuality: number;
     updatedAt: string;
   } | null;
-  activeSession?: unknown | null;
+  activeSession?: {
+    sessionId: string;
+    status: string;
+    startedAt: string;
+  } | null;
 }
 export interface SessionLogItem {
   sessionId: string;
@@ -154,6 +164,39 @@ export const userApi = {
 };
 
 // ---------------- Sessions ----------------
+export interface SessionStartResult {
+  sessionId: string;
+  userId: string;
+  profileId: string;
+  emgDeviceId: string;
+  motorDeviceId: string;
+  status: string;
+  startedAt: string;
+}
+export interface SessionEndResult {
+  sessionId: string;
+  status: string;
+  startedAt: string;
+  endedAt: string;
+  durationSeconds: number;
+  maxRiskScore: number;
+}
+export interface SessionStatusResult {
+  sessionId: string;
+  status: string;
+  emgDeviceId: string;
+  motorDeviceId: string;
+  startedAt: string;
+  endedAt?: string;
+  durationSeconds?: number;
+  maxRiskScore?: number;
+  latestFsmState?: string;
+  latestCommand?: {
+    command: string;
+    speedLevel: number;
+    issuedAt: string;
+  } | null;
+}
 export interface SessionDetail {
   session: {
     sessionId: string;
@@ -172,43 +215,83 @@ export interface SessionDetail {
     transitionedAt: string;
   }>;
   intentLogs: Array<{
-    intentId: string;
     intent: string;
-    confidence: number;
-    fatigueScore: number;
-    signalQuality: number;
     riskScore: number;
-    fatigueComponent: number;
-    stabilityComponent: number;
-    durationComponent: number;
-    accepted: boolean;
-    emgTimestamp: number;
-    receivedAt: string;
-  }>;
-  commands: Array<{
-    commandId: string;
-    intentId: string;
-    command: string;
-    speedLevel: number;
-    riskScore: number;
-    isFetched: boolean;
-    issuedAt: string;
-    fetchedAt: string;
+    loggedAt: string;
   }>;
 }
 export const sessionApi = {
+  start: (profileId: string, emgDeviceId: string, motorDeviceId: string) =>
+    request<SessionStartResult>("/api/sessions", {
+      method: "POST",
+      body: JSON.stringify({ profileId, emgDeviceId, motorDeviceId }),
+    }),
+  status: (sessionId: string) =>
+    request<SessionStatusResult>(`/api/sessions/${sessionId}/status`),
+  end: (sessionId: string, reason: string) =>
+    request<SessionEndResult>(`/api/sessions/${sessionId}/end`, {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    }),
   detail: (sessionId: string) =>
     request<SessionDetail>(`/api/sessions/${sessionId}/detail`),
 };
 
 // ---------------- Calibration ----------------
+export interface CalibrationStartResult {
+  calibrationSessionId: string;
+  emgDeviceId: string;
+  status: string;
+  currentStep: string;
+  startedAt: string;
+}
+export interface CalibrationStepResult {
+  calibrationSessionId: string;
+  currentStep: string;
+  nextStep: string | null;
+  updatedAt: string;
+}
+export interface CalibrationEndResult {
+  profileId: string;
+  calibrationSessionId: string;
+  signalQuality: number;
+  isActive: boolean;
+  createdAt: string;
+}
 export interface CalibrationProfile {
   profileId: string;
+  userId?: string;
+  ch1Mean?: number;
+  ch1Std?: number;
+  ch2Mean?: number;
+  ch2Std?: number;
+  ch3Mean?: number;
+  ch3Std?: number;
+  activationThreshold?: number;
+  intentThresholdLeft?: number;
+  intentThresholdRight?: number;
+  intentThresholdForward?: number;
+  fatigueBaseline?: number;
   signalQuality: number;
-  updatedAt: string;
   isActive?: boolean;
+  updatedAt: string;
 }
 export const calibrationApi = {
+  start: (emgDeviceId: string) =>
+    request<CalibrationStartResult>("/api/calibration", {
+      method: "POST",
+      body: JSON.stringify({ emgDeviceId }),
+    }),
+  updateStep: (calibrationSessionId: string, step: "REST" | "LEFT" | "RIGHT" | "STOP") =>
+    request<CalibrationStepResult>("/api/calibration", {
+      method: "PATCH",
+      body: JSON.stringify({ calibrationSessionId, step }),
+    }),
+  end: (calibrationSessionId: string) =>
+    request<CalibrationEndResult>("/api/calibration/end", {
+      method: "POST",
+      body: JSON.stringify({ calibrationSessionId }),
+    }),
   profile: () =>
     request<CalibrationProfile>("/api/calibration/profile"),
 };

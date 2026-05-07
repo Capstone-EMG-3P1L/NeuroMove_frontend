@@ -2,16 +2,32 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
+import { calibrationApi } from "@/lib/api";
+import { getUser, updateUser } from "@/lib/userStore";
 
 export default function CalibrationStep5() {
   const [, setLocation] = useLocation();
-  const [going, setGoing] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleDone = () => {
-    setGoing(true);
-    // 회원가입 흐름: Calibration 완료 → 디바이스 등록 → 홈
-    setTimeout(() => setLocation("/signup/devices"), 600);
+  const handleDone = async () => {
+    setLoading(true);
+    try {
+      const calibrationSessionId = getUser()?.calibrationSessionId;
+      if (calibrationSessionId) {
+        try {
+          // STOP 단계 업데이트 후 캘리브레이션 종료
+          await calibrationApi.updateStep(calibrationSessionId, "STOP").catch(() => {});
+          const res = await calibrationApi.end(calibrationSessionId);
+          updateUser({ profileId: res.profileId });
+        } catch {
+          // 백엔드 미연결 시에도 진행
+        }
+      }
+      setLocation("/main");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -45,7 +61,7 @@ export default function CalibrationStep5() {
             </div>
             <p className="text-base font-semibold text-foreground">Calibration이 완료되었습니다</p>
             <p className="text-xs text-muted-foreground text-center">
-              마지막 단계로 사용할 디바이스를 등록할게요
+              홈 화면으로 이동합니다
             </p>
           </motion.div>
         </div>
@@ -53,10 +69,10 @@ export default function CalibrationStep5() {
           <Button
             className="w-full h-12 bg-primary text-primary-foreground font-semibold text-base"
             onClick={handleDone}
-            disabled={going}
+            disabled={loading}
             data-testid="button-step5-done"
           >
-            디바이스 등록하기
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "홈으로 이동"}
           </Button>
         </div>
       </motion.div>

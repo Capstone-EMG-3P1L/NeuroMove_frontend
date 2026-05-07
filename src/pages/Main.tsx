@@ -12,6 +12,8 @@ import {
   WifiOff,
 } from "lucide-react";
 import { getStompClient } from "@/lib/websocket";
+import { sessionApi, userApi } from "@/lib/api";
+import { getUser, updateUser } from "@/lib/userStore";
 
 type Direction = "직진" | "왼쪽" | "오른쪽" | "정지";
 
@@ -202,15 +204,77 @@ export default function Main() {
   const [, setLocation] = useLocation();
   const [riskScore, setRiskScore] = useState(28);
   const [dirIdx, setDirIdx] = useState(0);
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
-  const [sessionId] = useState<string>("sess-002"); // 데모용 세션 ID
+  const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
   const tickRef = useRef(0);
   const fallbackRef = useRef<number | null>(null);
+  const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
+
+  // 페이지 진입 시 기존 활성 세션 확인
+  useEffect(() => {
+    const user = getUser();
+    if (user?.activeSessionId) {
+      setSessionId(user.activeSessionId);
+      setIsActive(true);
+    } else {
+      // 서버에서 활성 세션 확인
+      userApi.me().then((me) => {
+        if (me.activeSession?.sessionId) {
+          const sid = me.activeSession.sessionId;
+          setSessionId(sid);
+          updateUser({ activeSessionId: sid });
+          setIsActive(true);
+        }
+      }).catch(() => {});
+    }
+  }, []);
+
+  // 세션 시작/종료 처리
+  const handleToggleActive = async () => {
+    if (isActive) {
+      // 세션 종료
+      if (sessionId) {
+        try {
+          await sessionApi.end(sessionId, "USER_REQUEST");
+        } catch {
+          // 실패해도 UI는 종료
+        }
+        updateUser({ activeSessionId: undefined });
+        setSessionId(null);
+      }
+      setIsActive(false);
+    } else {
+      // 세션 시작
+      const user = getUser();
+      const profileId = user?.profileId;
+      const emgDeviceId = user?.emgDeviceId;
+      const motorDeviceId = user?.motorDeviceId;
+
+      if (profileId && emgDeviceId && motorDeviceId) {
+        try {
+          const res = await sessionApi.start(profileId, emgDeviceId, motorDeviceId);
+          setSessionId(res.sessionId);
+          updateUser({ activeSessionId: res.sessionId });
+        } catch {
+          // 백엔드 미연결 시 데모 세션 ID 사용
+        }
+      }
+      setIsActive(true);
+    }
+  };
 
   // ---- WebSocket(STOMP) 연결 ----
   useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
+    if (!isActive || !sessionId) {
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = undefined;
+      }
+      setWsState("idle");
+      return;
+    }
+
     let cancelled = false;
     setWsState("connecting");
 
@@ -218,7 +282,7 @@ export default function Main() {
       .then((client) => {
         if (cancelled) return;
         setWsState("connected");
-        unsubscribe = client.subscribe(`/topic/sessions/${sessionId}`, (msg) => {
+        unsubscribeRef.current = client.subscribe(`/topic/sessions/${sessionId}`, (msg) => {
           try {
             const payload = JSON.parse(msg.body);
             if (typeof payload.riskScore === "number") {
@@ -241,9 +305,12 @@ export default function Main() {
 
     return () => {
       cancelled = true;
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = undefined;
+      }
     };
-  }, [sessionId]);
+  }, [isActive, sessionId]);
 
   // 데모용 폴백 시뮬레이션 (서버 미연결 시에만)
   useEffect(() => {
@@ -292,11 +359,11 @@ export default function Main() {
                 ? "bg-green-50 border-green-200 text-green-700"
                 : "bg-muted border-border text-muted-foreground"
             }`}
-            onClick={() => setIsActive((v) => !v)}
+            onClick={handleToggleActive}
             data-testid="btn-toggle-live"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-            {isActive ? "Live" : "일시정지"}
+            {isActive ? "Live" : "운행 시작"}
           </button>
         </div>
       </div>

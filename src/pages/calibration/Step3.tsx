@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { calibrationApi } from "@/lib/api";
+import { getUser } from "@/lib/userStore";
 
 function FaceIcon() {
   return (
@@ -17,6 +21,20 @@ function FaceIcon() {
 
 export default function CalibrationStep3() {
   const [, setLocation] = useLocation();
+  const [loading, setLoading] = useState(false);
+
+  const handleNext = async () => {
+    setLoading(true);
+    try {
+      const calibrationSessionId = getUser()?.calibrationSessionId;
+      if (calibrationSessionId) {
+        await calibrationApi.updateStep(calibrationSessionId, "LEFT").catch(() => {});
+      }
+      setLocation("/calibration/step4");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -48,10 +66,11 @@ export default function CalibrationStep3() {
         <div className="px-6 pb-6">
           <Button
             className="w-full h-12 bg-primary text-primary-foreground font-semibold text-base"
-            onClick={() => setLocation("/calibration/step4")}
+            onClick={handleNext}
+            disabled={loading}
             data-testid="button-step3"
           >
-            교준쪽 바라봐주세요
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "교준쪽 바라봐주세요"}
           </Button>
         </div>
       </motion.div>

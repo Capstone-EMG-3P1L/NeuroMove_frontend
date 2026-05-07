@@ -6,60 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { sessionApi, type SessionDetail } from "@/lib/api";
 
-const SAMPLE_DETAIL: SessionDetail = {
-  session: {
-    sessionId: "sess-002",
-    emgDeviceId: "emg-esp32-A12F",
-    motorDeviceId: "motor-esp32-C01",
-    status: "ENDED",
-    startedAt: "2026-04-04T14:40:00",
-    endedAt: "2026-04-04T14:48:20",
-    durationSeconds: 500,
-    maxRiskScore: 0.78,
-  },
-  fsmStates: [
-    {
-      fromState: "READY",
-      toState: "DRIVING",
-      reason: "SESSION_STARTED",
-      transitionedAt: "2026-04-04T14:40:02",
-    },
-    {
-      fromState: "DRIVING",
-      toState: "FATIGUE_COMPENSATING",
-      reason: "FATIGUE",
-      transitionedAt: "2026-04-04T14:45:10",
-    },
-  ],
-  intentLogs: [
-    {
-      intentId: "intent-001",
-      intent: "FORWARD",
-      confidence: 0.89,
-      fatigueScore: 0.23,
-      signalQuality: 0.94,
-      riskScore: 0.31,
-      fatigueComponent: 0.1,
-      stabilityComponent: 0.07,
-      durationComponent: 0.08,
-      accepted: true,
-      emgTimestamp: 1775288400123,
-      receivedAt: "2026-04-04T14:40:03",
-    },
-  ],
-  commands: [
-    {
-      commandId: "cmd-001",
-      intentId: "intent-001",
-      command: "FORWARD",
-      speedLevel: 3,
-      riskScore: 0.31,
-      isFetched: true,
-      issuedAt: "2026-04-04T14:40:03",
-      fetchedAt: "2026-04-04T14:40:04",
-    },
-  ],
-};
 
 function getQuery(name: string): string | null {
   if (typeof window === "undefined") return null;
@@ -74,7 +20,12 @@ export default function LogDetail() {
   const [usingFallback, setUsingFallback] = useState(false);
 
   useEffect(() => {
-    const sessionId = getQuery("sessionId") ?? "sess-002";
+    const sessionId = getQuery("sessionId");
+    if (!sessionId) {
+      setDetail(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     sessionApi
       .detail(sessionId)
@@ -83,7 +34,7 @@ export default function LogDetail() {
         setUsingFallback(false);
       })
       .catch(() => {
-        setDetail(SAMPLE_DETAIL);
+        setDetail(null);
         setUsingFallback(true);
       })
       .finally(() => setLoading(false));
@@ -105,7 +56,7 @@ export default function LogDetail() {
     );
   }
 
-  const { session, fsmStates, intentLogs, commands } = detail;
+  const { session, fsmStates, intentLogs } = detail;
 
   return (
     <motion.div
@@ -150,14 +101,10 @@ export default function LogDetail() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
           <Stat label="EMG" value={session.emgDeviceId} />
           <Stat label="MOTOR" value={session.motorDeviceId} />
           <Stat label="지속 시간" value={`${Math.floor(session.durationSeconds / 60)}분 ${session.durationSeconds % 60}초`} />
-          <Stat
-            label="평균 신뢰도"
-            value={`${(avg(intentLogs.map((i) => i.confidence)) * 100).toFixed(0)}%`}
-          />
         </div>
       </div>
 
@@ -176,35 +123,19 @@ export default function LogDetail() {
       </Card>
 
       <Card title="Intent 로그" empty="Intent 기록 없음" count={intentLogs.length} className="mt-4">
-        {intentLogs.map((i) => (
-          <div key={i.intentId} className="px-4 py-3 text-sm">
+        {intentLogs.map((i, idx) => (
+          <div key={idx} className="px-4 py-3 text-sm">
             <div className="flex items-center justify-between">
               <span className="font-medium text-foreground">{i.intent}</span>
-              <span className="text-xs text-muted-foreground">
-                {fmt(i.receivedAt)}
-              </span>
-            </div>
-            <div className="grid grid-cols-3 gap-2 mt-2 text-[11px] text-muted-foreground">
-              <span>conf {(i.confidence * 100).toFixed(0)}%</span>
-              <span>fatigue {(i.fatigueScore * 100).toFixed(0)}%</span>
-              <span>quality {(i.signalQuality * 100).toFixed(0)}%</span>
-            </div>
-          </div>
-        ))}
-      </Card>
-
-      <Card title="커맨드" empty="발행 커맨드 없음" count={commands.length} className="mt-4">
-        {commands.map((c) => (
-          <div key={c.commandId} className="px-4 py-3 flex items-center justify-between text-sm">
-            <div>
-              <div className="font-medium">{c.command}</div>
-              <div className="text-[11px] text-muted-foreground">
-                speed lv {c.speedLevel} · {fmt(c.issuedAt)}
+              <div className="flex items-center gap-2">
+                <Badge className={badgeRisk(i.riskScore)}>
+                  risk {(i.riskScore * 100).toFixed(0)}
+                </Badge>
+                <span className="text-xs text-muted-foreground">
+                  {fmt(i.loggedAt)}
+                </span>
               </div>
             </div>
-            <Badge className={badgeRisk(c.riskScore)}>
-              {(c.riskScore * 100).toFixed(0)}
-            </Badge>
           </div>
         ))}
       </Card>
@@ -269,11 +200,6 @@ function fmt(s?: string) {
   } catch {
     return s;
   }
-}
-
-function avg(arr: number[]) {
-  if (!arr.length) return 0;
-  return arr.reduce((a, b) => a + b, 0) / arr.length;
 }
 
 function badgeRisk(score: number) {

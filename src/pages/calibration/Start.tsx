@@ -1,6 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
+import { calibrationApi, deviceApi } from "@/lib/api";
+import { getUser, updateUser } from "@/lib/userStore";
 
 function HandTapIllustration() {
   return (
@@ -24,6 +28,44 @@ function HandTapIllustration() {
 
 export default function CalibrationStart() {
   const [, setLocation] = useLocation();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleStart = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // emgDeviceId 확보: userStore에 있으면 사용, 없으면 목록 조회 후 자동 등록
+      let emgDeviceId = getUser()?.emgDeviceId;
+      if (!emgDeviceId) {
+        try {
+          const list = await deviceApi.listEmg();
+          if (list.devices.length > 0) {
+            emgDeviceId = list.devices[0].emgDeviceId;
+            updateUser({ emgDeviceId });
+          } else {
+            const reg = await deviceApi.registerEmg("내 EMG 보드");
+            emgDeviceId = reg.emgDeviceId;
+            updateUser({ emgDeviceId });
+          }
+        } catch {
+          // 백엔드 미연결 시 임시 ID로 진행
+          emgDeviceId = "emg-pending";
+        }
+      }
+
+      try {
+        const res = await calibrationApi.start(emgDeviceId);
+        updateUser({ calibrationSessionId: res.calibrationSessionId });
+      } catch {
+        // 백엔드 미연결 시에도 흐름 진행
+      }
+
+      setLocation("/calibration/step2");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -45,15 +87,18 @@ export default function CalibrationStart() {
           >
             <HandTapIllustration />
           </motion.div>
+
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
         </div>
 
         <div className="px-6 pb-6">
           <Button
             className="w-full h-12 bg-primary text-primary-foreground font-semibold text-base"
-            onClick={() => setLocation("/calibration/step2")}
+            onClick={handleStart}
+            disabled={loading}
             data-testid="button-calibration-start"
           >
-            Calibration 시작하기
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Calibration 시작하기"}
           </Button>
         </div>
       </motion.div>

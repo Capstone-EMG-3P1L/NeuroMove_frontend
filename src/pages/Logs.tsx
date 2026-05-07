@@ -5,28 +5,6 @@ import { ChevronRight, Loader2 } from "lucide-react";
 import { userApi, type SessionLogItem } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
 
-const SAMPLE: SessionLogItem[] = [
-  {
-    sessionId: "sess-001",
-    emgDeviceId: "emg-esp32-A12F",
-    motorDeviceId: "motor-esp32-C01",
-    startedAt: "2026-04-03T10:00:00",
-    endedAt: "2026-04-03T10:12:10",
-    durationSeconds: 730,
-    maxRiskScore: 0.66,
-    status: "ENDED",
-  },
-  {
-    sessionId: "sess-002",
-    emgDeviceId: "emg-esp32-A12F",
-    motorDeviceId: "motor-esp32-C01",
-    startedAt: "2026-04-04T14:40:00",
-    endedAt: "2026-04-04T14:48:20",
-    durationSeconds: 500,
-    maxRiskScore: 0.78,
-    status: "ENDED",
-  },
-];
 
 export default function Logs() {
   const [, setLocation] = useLocation();
@@ -43,7 +21,7 @@ export default function Logs() {
         setUsingFallback(false);
       })
       .catch(() => {
-        setLogs(SAMPLE);
+        setLogs([]);
         setUsingFallback(true);
       })
       .finally(() => setLoading(false));

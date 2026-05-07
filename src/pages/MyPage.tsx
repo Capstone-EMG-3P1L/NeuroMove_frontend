@@ -22,68 +22,6 @@ import {
 } from "@/lib/api";
 import { getUser } from "@/lib/userStore";
 
-const SAMPLE_USER: UserStatus = {
-  userId: "user-001",
-  username: "soobin123",
-  name: "박수빈",
-  registeredEmgDevice: {
-    emgDeviceId: "emg-esp32-A12F",
-    name: "내 EMG 보드",
-    isActive: true,
-  },
-  registeredMotorDevice: {
-    motorDeviceId: "motor-esp32-C01",
-    name: "RC카 1번 모터 보드",
-    isActive: true,
-    connectionStatus: "CONNECTED",
-  },
-  activeCalibrationProfile: {
-    profileId: "profile-001",
-    signalQuality: 0.93,
-    updatedAt: "2026-04-04T14:35:00",
-  },
-  activeSession: null,
-};
-
-const SAMPLE_LOGS: SessionLogItem[] = [
-  {
-    sessionId: "sess-001",
-    emgDeviceId: "emg-esp32-A12F",
-    motorDeviceId: "motor-esp32-C01",
-    startedAt: "2026-04-03T10:00:00",
-    endedAt: "2026-04-03T10:12:10",
-    durationSeconds: 730,
-    maxRiskScore: 0.66,
-    status: "ENDED",
-  },
-  {
-    sessionId: "sess-002",
-    emgDeviceId: "emg-esp32-A12F",
-    motorDeviceId: "motor-esp32-C01",
-    startedAt: "2026-04-04T14:40:00",
-    endedAt: "2026-04-04T14:48:20",
-    durationSeconds: 500,
-    maxRiskScore: 0.78,
-    status: "ENDED",
-  },
-];
-
-const SAMPLE_EMG_DEVICES: EmgDeviceItem[] = [
-  {
-    emgDeviceId: "emg-esp32-A12F",
-    name: "내 EMG 보드",
-    isActive: true,
-  },
-];
-
-const SAMPLE_MOTOR_DEVICES: MotorDeviceItem[] = [
-  {
-    motorDeviceId: "motor-esp32-C01",
-    name: "RC카 1번 모터 보드",
-    isActive: true,
-    connectionStatus: "CONNECTED",
-  },
-];
 
 export default function MyPage() {
   const [, setLocation] = useLocation();
@@ -112,25 +50,29 @@ export default function MyPage() {
         logsRes.status === "rejected";
 
       if (allFailed) {
-        setStatus(SAMPLE_USER);
-        setEmgDevices(SAMPLE_EMG_DEVICES);
-        setMotorDevices(SAMPLE_MOTOR_DEVICES);
-        setLogs(SAMPLE_LOGS);
+        // 백엔드 미연결 시 로그인한 사용자 정보만 표시
+        const stored = localUser;
+        if (stored) {
+          setStatus({
+            userId: stored.userId ?? "",
+            username: stored.id,
+            name: stored.name,
+            registeredEmgDevice: null,
+            registeredMotorDevice: null,
+            activeCalibrationProfile: null,
+            activeSession: null,
+          });
+        }
+        setEmgDevices([]);
+        setMotorDevices([]);
+        setLogs([]);
         setUsingFallback(true);
       } else {
         setUsingFallback(false);
-        setStatus(me.status === "fulfilled" ? me.value : SAMPLE_USER);
-        setEmgDevices(
-          emg.status === "fulfilled" ? emg.value.devices : SAMPLE_EMG_DEVICES,
-        );
-        setMotorDevices(
-          motor.status === "fulfilled"
-            ? motor.value.devices
-            : SAMPLE_MOTOR_DEVICES,
-        );
-        setLogs(
-          logsRes.status === "fulfilled" ? logsRes.value.logs : SAMPLE_LOGS,
-        );
+        setStatus(me.status === "fulfilled" ? me.value : null);
+        setEmgDevices(emg.status === "fulfilled" ? emg.value.devices : []);
+        setMotorDevices(motor.status === "fulfilled" ? motor.value.devices : []);
+        setLogs(logsRes.status === "fulfilled" ? logsRes.value.logs : []);
       }
     } finally {
       setLoading(false);

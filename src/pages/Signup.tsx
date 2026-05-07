@@ -30,29 +30,23 @@ export default function Signup({ onSignup }: SignupProps) {
     setSubmitting(true);
 
     try {
-      // 백엔드 회원가입 호출 (실패해도 UX는 진행)
       let userId: string | undefined;
       let token: string | undefined;
       try {
-        const reg = await authApi.register({
+        // 회원가입 (토큰 없음) → 바로 로그인으로 토큰 획득
+        await authApi.register({
           username: id.trim(),
           password,
           name: name.trim(),
         });
-        userId = reg.userId;
-        token = reg.token;
-      } catch (apiErr) {
-        // 서버 응답이 없거나 토큰을 같이 안 주는 경우 → 로그인 시도
-        try {
-          const login = await authApi.login({
-            username: id.trim(),
-            password,
-          });
-          userId = login.userId;
-          token = login.token;
-        } catch {
-          // 백엔드가 닿지 않아도 데모 흐름은 진행
-        }
+        const login = await authApi.login({
+          username: id.trim(),
+          password,
+        });
+        userId = login.user.userId;
+        token = login.accessToken;
+      } catch {
+        // 백엔드가 닿지 않아도 데모 흐름은 진행
       }
 
       setUser({
@@ -62,7 +56,7 @@ export default function Signup({ onSignup }: SignupProps) {
         token,
       });
       onSignup();
-      setLocation("/calibration/start");
+      setLocation("/signup/devices");
     } finally {
       setSubmitting(false);
     }

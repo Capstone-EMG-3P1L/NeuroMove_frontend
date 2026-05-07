@@ -29,20 +29,17 @@ export default function Login({ onLogin }: LoginProps) {
     setError(null);
 
     try {
-      try {
-        const res = await authApi.login({ username: id.trim(), password });
-        setUser({
-          name: res.name,
-          id: res.username,
-          userId: res.userId,
-          token: res.token,
-        });
-      } catch (apiErr) {
-        // 백엔드 미연결 시 데모 진입은 허용
-        setUser({ name: "데모 사용자", id: id.trim() });
-      }
+      const res = await authApi.login({ username: id.trim(), password });
+      setUser({
+        name: res.user.name,
+        id: res.user.username,
+        userId: res.user.userId,
+        token: res.accessToken,
+      });
       onLogin();
       setLocation("/main");
+    } catch (apiErr) {
+      setError("로그인에 실패했습니다. 아이디와 비밀번호를 확인해주세요.");
     } finally {
       setSubmitting(false);
     }
