@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { calibrationApi } from "@/lib/api";
+import { calibrationApi, onboardingApi } from "@/lib/api";
 import { getUser } from "@/lib/userStore";
 
 function FaceIcon() {
@@ -26,9 +26,15 @@ export default function CalibrationStep3() {
   const handleNext = async () => {
     setLoading(true);
     try {
-      const calibrationSessionId = getUser()?.calibrationSessionId;
+      const user = getUser();
+      const calibrationSessionId = user?.calibrationSessionId;
+      const onboardingId = user?.onboardingId;
       if (calibrationSessionId) {
-        await calibrationApi.updateStep(calibrationSessionId, "LEFT").catch(() => {});
+        if (onboardingId) {
+          await onboardingApi.updateCalibrationStep({ onboardingId, calibrationSessionId, step: "LEFT" }).catch(() => {});
+        } else {
+          await calibrationApi.updateStep(calibrationSessionId, "LEFT").catch(() => {});
+        }
       }
       setLocation("/calibration/step4");
     } finally {

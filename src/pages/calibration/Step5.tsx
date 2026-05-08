@@ -3,8 +3,8 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2 } from "lucide-react";
-import { calibrationApi } from "@/lib/api";
-import { getUser, updateUser } from "@/lib/userStore";
+import { calibrationApi, onboardingApi } from "@/lib/api";
+import { getUser, setUser, updateUser } from "@/lib/userStore";
 
 export default function CalibrationStep5() {
   const [, setLocation] = useLocation();
@@ -13,17 +13,32 @@ export default function CalibrationStep5() {
   const handleDone = async () => {
     setLoading(true);
     try {
-      const calibrationSessionId = getUser()?.calibrationSessionId;
-      if (calibrationSessionId) {
-        try {
-          // STOP 단계 업데이트 후 캘리브레이션 종료
-          await calibrationApi.updateStep(calibrationSessionId, "STOP").catch(() => {});
-          const res = await calibrationApi.end(calibrationSessionId);
-          updateUser({ profileId: res.profileId });
-        } catch {
-          // 백엔드 미연결 시에도 진행
-        }
+      const user = getUser();
+      const calibrationSessionId = user?.calibrationSessionId;
+      const onboardingId = user?.onboardingId;
+
+      if (onboardingId && calibrationSessionId) {
+        // 온보딩 모드: STOP → calibration end → onboarding complete (JWT 수령)
+        await onboardingApi.updateCalibrationStep({ onboardingId, calibrationSessionId, step: "STOP" }).catch(() => {});
+        await onboardingApi.endCalibration({ onboardingId, calibrationSessionId });
+        const complete = await onboardingApi.complete(onboardingId);
+        setUser({
+          name: complete.user.name,
+          id: complete.user.username,
+          userId: complete.user.userId,
+          token: complete.accessToken,
+        });
+      } else if (calibrationSessionId) {
+        // 일반 재측정 모드
+        await calibrationApi.updateStep(calibrationSessionId, "STOP").catch(() => {});
+        const res = await calibrationApi.end(calibrationSessionId);
+        updateUser({ profileId: res.profileId });
       }
+
+      setLocation("/main");
+    } catch (err) {
+      // 에러가 발생해도 /main으로 진행
+      console.error("Calibration 완료 처리 중 오류:", err);
       setLocation("/main");
     } finally {
       setLoading(false);

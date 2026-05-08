@@ -3,6 +3,7 @@ export interface UserProfile {
   id: string;
   userId?: string;
   token?: string;
+  onboardingId?: string;
   emgDeviceId?: string;
   motorDeviceId?: string;
   calibrationSessionId?: string;

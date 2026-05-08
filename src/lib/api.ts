@@ -56,17 +56,6 @@ async function request<T>(
 }
 
 // ---------------- Auth ----------------
-export interface RegisterRequest {
-  username: string;
-  password: string;
-  name: string;
-}
-export interface RegisterResponse {
-  userId: string;
-  username: string;
-  name: string;
-  createdAt?: string;
-}
 export interface LoginResponse {
   accessToken: string;
   tokenType: string;
@@ -77,15 +66,77 @@ export interface LoginResponse {
   };
 }
 export const authApi = {
-  register: (body: RegisterRequest) =>
-    request<RegisterResponse>("/api/auth/register", {
-      method: "POST",
-      body: JSON.stringify(body),
-    }),
   login: (body: { username: string; password: string }) =>
     request<LoginResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+};
+
+// ---------------- Onboarding ----------------
+export interface OnboardingStartResult {
+  onboardingId: string;
+}
+export interface OnboardingCompleteResult {
+  accessToken: string;
+  refreshToken: string;
+  tokenType: string;
+  user: {
+    userId: string;
+    username: string;
+    name: string;
+  };
+}
+export interface EmgDeviceRegisterResult {
+  emgDeviceId: string;
+  userId: string | null;
+  name: string;
+  isActive: boolean;
+  createdAt: string | null;
+}
+export interface MotorDeviceRegisterResult {
+  motorDeviceId: string;
+  userId: string | null;
+  name: string;
+  isActive: boolean;
+  connectionStatus: string;
+  createdAt: string | null;
+}
+export const onboardingApi = {
+  start: (body: { username: string; password: string; name: string }) =>
+    request<OnboardingStartResult>("/api/auth/onboarding/start", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  registerEmgDevice: (body: { onboardingId: string; name: string }) =>
+    request<EmgDeviceRegisterResult>("/api/auth/onboarding/emg-devices", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  registerMotorDevice: (body: { onboardingId: string; name: string }) =>
+    request<MotorDeviceRegisterResult>("/api/auth/onboarding/motor-devices", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  startCalibration: (body: { onboardingId: string; emgDeviceId: string }) =>
+    request<CalibrationStartResult>("/api/auth/onboarding/calibration/start", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateCalibrationStep: (body: { onboardingId: string; calibrationSessionId: string; step: "REST" | "LEFT" | "RIGHT" | "STOP" }) =>
+    request<CalibrationStepResult>("/api/auth/onboarding/calibration", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  endCalibration: (body: { onboardingId: string; calibrationSessionId: string }) =>
+    request<CalibrationEndResult>("/api/auth/onboarding/calibration/end", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  complete: (onboardingId: string) =>
+    request<OnboardingCompleteResult>("/api/auth/onboarding/complete", {
+      method: "POST",
+      body: JSON.stringify({ onboardingId }),
     }),
 };
 

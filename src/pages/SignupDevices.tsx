@@ -11,8 +11,8 @@ import {
   Loader2,
   ArrowRight,
 } from "lucide-react";
-import { deviceApi } from "@/lib/api";
-import { updateUser } from "@/lib/userStore";
+import { onboardingApi } from "@/lib/api";
+import { getUser, updateUser } from "@/lib/userStore";
 
 type Step = "emg" | "motor" | "done";
 
@@ -34,13 +34,18 @@ export default function SignupDevices() {
     setError(null);
     setSubmitting(true);
     try {
+      const onboardingId = getUser()?.onboardingId;
+      if (!onboardingId) {
+        setError("온보딩 세션이 없습니다. 다시 시작해주세요.");
+        return;
+      }
       try {
-        const res = await deviceApi.registerEmg(emgName.trim());
+        const res = await onboardingApi.registerEmgDevice({ onboardingId, name: emgName.trim() });
         setEmgInfo({ id: res.emgDeviceId, name: res.name });
         updateUser({ emgDeviceId: res.emgDeviceId });
-      } catch {
-        // 백엔드 미연결 시에도 흐름은 진행
-        setEmgInfo({ id: "emg-pending", name: emgName.trim() });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "EMG 디바이스 등록에 실패했습니다.");
+        return;
       }
       setStep("motor");
     } finally {
@@ -56,12 +61,18 @@ export default function SignupDevices() {
     setError(null);
     setSubmitting(true);
     try {
+      const onboardingId = getUser()?.onboardingId;
+      if (!onboardingId) {
+        setError("온보딩 세션이 없습니다. 다시 시작해주세요.");
+        return;
+      }
       try {
-        const res = await deviceApi.registerMotor(motorName.trim());
+        const res = await onboardingApi.registerMotorDevice({ onboardingId, name: motorName.trim() });
         setMotorInfo({ id: res.motorDeviceId, name: res.name });
         updateUser({ motorDeviceId: res.motorDeviceId });
-      } catch {
-        setMotorInfo({ id: "motor-pending", name: motorName.trim() });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "MOTOR 디바이스 등록에 실패했습니다.");
+        return;
       }
       setStep("done");
     } finally {

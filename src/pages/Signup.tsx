@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Brain, Loader2 } from "lucide-react";
 import { setUser } from "@/lib/userStore";
-import { authApi } from "@/lib/api";
+import { onboardingApi } from "@/lib/api";
 
 interface SignupProps {
   onSignup: () => void;
@@ -30,30 +30,23 @@ export default function Signup({ onSignup }: SignupProps) {
     setSubmitting(true);
 
     try {
-      let userId: string | undefined;
-      let token: string | undefined;
+      let onboardingId: string | undefined;
       try {
-        // 회원가입 (토큰 없음) → 바로 로그인으로 토큰 획득
-        await authApi.register({
+        const res = await onboardingApi.start({
           username: id.trim(),
           password,
           name: name.trim(),
         });
-        const login = await authApi.login({
-          username: id.trim(),
-          password,
-        });
-        userId = login.user.userId;
-        token = login.accessToken;
-      } catch {
-        // 백엔드가 닿지 않아도 데모 흐름은 진행
+        onboardingId = res.onboardingId;
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "회원가입 시작에 실패했습니다.");
+        return;
       }
 
       setUser({
-        name: name.trim() || "사용자",
+        name: name.trim(),
         id: id.trim(),
-        userId,
-        token,
+        onboardingId,
       });
       onSignup();
       setLocation("/signup/devices");

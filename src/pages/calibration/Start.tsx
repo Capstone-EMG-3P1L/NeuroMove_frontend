@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { calibrationApi, deviceApi } from "@/lib/api";
+import { calibrationApi, deviceApi, onboardingApi } from "@/lib/api";
 import { getUser, updateUser } from "@/lib/userStore";
 
 function HandTapIllustration() {
@@ -35,33 +35,43 @@ export default function CalibrationStart() {
     setLoading(true);
     setError(null);
     try {
-      // emgDeviceId 확보: userStore에 있으면 사용, 없으면 목록 조회 후 자동 등록
-      let emgDeviceId = getUser()?.emgDeviceId;
-      if (!emgDeviceId) {
-        try {
-          const list = await deviceApi.listEmg();
-          if (list.devices.length > 0) {
-            emgDeviceId = list.devices[0].emgDeviceId;
-            updateUser({ emgDeviceId });
-          } else {
-            const reg = await deviceApi.registerEmg("내 EMG 보드");
-            emgDeviceId = reg.emgDeviceId;
-            updateUser({ emgDeviceId });
-          }
-        } catch {
-          // 백엔드 미연결 시 임시 ID로 진행
-          emgDeviceId = "emg-pending";
-        }
-      }
+      const user = getUser();
+      const onboardingId = user?.onboardingId;
+      let emgDeviceId = user?.emgDeviceId;
 
-      try {
+      if (onboardingId) {
+        // 온보딩 모드: 온보딩 전용 calibration start
+        if (!emgDeviceId) {
+          setError("EMG 디바이스 정보가 없습니다. 디바이스 등록을 먼저 진행해주세요.");
+          return;
+        }
+        const res = await onboardingApi.startCalibration({ onboardingId, emgDeviceId });
+        updateUser({ calibrationSessionId: res.calibrationSessionId });
+      } else {
+        // 일반 재측정 모드: 기존 DB 기반 flow
+        if (!emgDeviceId) {
+          try {
+            const list = await deviceApi.listEmg();
+            if (list.devices.length > 0) {
+              emgDeviceId = list.devices[0].emgDeviceId;
+              updateUser({ emgDeviceId });
+            } else {
+              const reg = await deviceApi.registerEmg("내 EMG 보드");
+              emgDeviceId = reg.emgDeviceId;
+              updateUser({ emgDeviceId });
+            }
+          } catch {
+            setError("EMG 디바이스 정보를 불러오지 못했습니다.");
+            return;
+          }
+        }
         const res = await calibrationApi.start(emgDeviceId);
         updateUser({ calibrationSessionId: res.calibrationSessionId });
-      } catch {
-        // 백엔드 미연결 시에도 흐름 진행
       }
 
       setLocation("/calibration/step2");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Calibration 시작에 실패했습니다.");
     } finally {
       setLoading(false);
     }
