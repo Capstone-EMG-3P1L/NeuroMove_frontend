@@ -4,7 +4,7 @@
  */
 import { getToken } from "./userStore";
 
-export const API_BASE_URL = "http://43.201.220.50:8080";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export interface ApiSuccess<T> {
   success: true;

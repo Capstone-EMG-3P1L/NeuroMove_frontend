@@ -14,6 +14,14 @@ export default defineConfig({
     },
     dedupe: ["react", "react-dom"],
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://43.201.220.50:8080",
+        changeOrigin: true,
+      },
+    },
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist"),
     emptyOutDir: true,
