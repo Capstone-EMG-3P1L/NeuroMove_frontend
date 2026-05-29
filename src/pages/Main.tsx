@@ -208,8 +208,6 @@ export default function Main() {
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
   const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
   const [userLoading, setUserLoading] = useState(false);
-  const tickRef = useRef(0);
-  const fallbackRef = useRef<number | null>(null);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
 
   // 페이지 진입 시 기존 활성 세션 확인
@@ -329,33 +327,6 @@ export default function Main() {
     };
   }, [isActive, sessionId]);
 
-  // 데모용 폴백 시뮬레이션 (서버 미연결 시에만)
-  useEffect(() => {
-    if (wsState === "connected" || !isActive) {
-      if (fallbackRef.current) {
-        window.clearInterval(fallbackRef.current);
-        fallbackRef.current = null;
-      }
-      return;
-    }
-    fallbackRef.current = window.setInterval(() => {
-      tickRef.current += 1;
-      setRiskScore((prev) => {
-        const base = prev ?? 50;
-        const delta = (Math.random() - 0.48) * 6;
-        return Math.min(95, Math.max(5, Math.round(base + delta)));
-      });
-      if (tickRef.current % 4 === 0) {
-        setDirIdx(Math.floor(Math.random() * DIRECTIONS.length));
-      }
-    }, 1200);
-    return () => {
-      if (fallbackRef.current) {
-        window.clearInterval(fallbackRef.current);
-        fallbackRef.current = null;
-      }
-    };
-  }, [isActive, wsState]);
 
   return (
     <motion.div
