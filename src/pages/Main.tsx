@@ -225,6 +225,7 @@ export default function Main() {
 
   // 세션 시작/종료 처리
   const handleToggleActive = async () => {
+    console.log("[handleToggleActive] called, isActive:", isActive);
     if (isActive) {
       // 세션 종료
       if (sessionId) {
