@@ -207,7 +207,6 @@ export default function Main() {
   const [isActive, setIsActive] = useState(false);
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
   const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
-  const [userLoading, setUserLoading] = useState(false);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
 
   // 페이지 진입 시 디바이스/프로필 정보 로드
@@ -334,11 +333,10 @@ export default function Main() {
                 : "bg-muted border-border text-muted-foreground"
             } disabled:opacity-50 disabled:cursor-not-allowed`}
             onClick={handleToggleActive}
-            disabled={userLoading}
             data-testid="btn-toggle-live"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-            {userLoading ? "로딩 중..." : isActive ? "Live" : "운행 시작"}
+            {isActive ? "Live" : "운행 시작"}
           </button>
         </div>
       </div>
