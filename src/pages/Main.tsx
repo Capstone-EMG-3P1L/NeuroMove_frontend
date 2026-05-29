@@ -202,8 +202,8 @@ function DirectionDisplay({ dir }: { dir: Direction }) {
 
 export default function Main() {
   const [, setLocation] = useLocation();
-  const [riskScore, setRiskScore] = useState(28);
-  const [dirIdx, setDirIdx] = useState(0);
+  const [riskScore, setRiskScore] = useState<number | null>(null);
+  const [dirIdx, setDirIdx] = useState<number | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
   const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
@@ -244,6 +244,8 @@ export default function Main() {
         setSessionId(null);
       }
       setIsActive(false);
+      setRiskScore(null);
+      setDirIdx(null);
     } else {
       // 세션 시작
       const user = getUser();
@@ -294,6 +296,7 @@ export default function Main() {
               const idx = DIRECTIONS.indexOf(target);
               if (idx >= 0) setDirIdx(idx);
             }
+
           } catch {
             /* ignore non-JSON */
           }
@@ -324,8 +327,9 @@ export default function Main() {
     fallbackRef.current = window.setInterval(() => {
       tickRef.current += 1;
       setRiskScore((prev) => {
+        const base = prev ?? 50;
         const delta = (Math.random() - 0.48) * 6;
-        return Math.min(95, Math.max(5, Math.round(prev + delta)));
+        return Math.min(95, Math.max(5, Math.round(base + delta)));
       });
       if (tickRef.current % 4 === 0) {
         setDirIdx(Math.floor(Math.random() * DIRECTIONS.length));
@@ -377,19 +381,28 @@ export default function Main() {
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             Risk Score
           </div>
-          <CircularGauge score={riskScore} />
-          <div className="mt-2 w-full">
-            <div className="flex justify-between text-xs text-muted-foreground mb-1">
-              <span>안전</span><span>위험</span>
+          {riskScore !== null ? (
+            <CircularGauge score={riskScore} />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2" style={{ width: 200, height: 200 }}>
+              <span className="text-4xl font-bold text-muted-foreground">--</span>
+              <span className="text-xs text-muted-foreground">운행 시작 후 측정</span>
             </div>
-            <div className="h-1.5 w-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400 rounded-full opacity-40" />
-            <motion.div
-              className="w-2.5 h-2.5 rounded-full border-2 border-white shadow-md -mt-[11px]"
-              style={{ backgroundColor: getRiskColor(riskScore).color }}
-              animate={{ marginLeft: `calc(${riskScore}% - 5px)` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            />
-          </div>
+          )}
+          {riskScore !== null && (
+            <div className="mt-2 w-full">
+              <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                <span>안전</span><span>위험</span>
+              </div>
+              <div className="h-1.5 w-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400 rounded-full opacity-40" />
+              <motion.div
+                className="w-2.5 h-2.5 rounded-full border-2 border-white shadow-md -mt-[11px]"
+                style={{ backgroundColor: getRiskColor(riskScore).color }}
+                animate={{ marginLeft: `calc(${riskScore}% - 5px)` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+          )}
         </motion.div>
 
         <motion.div
@@ -400,7 +413,14 @@ export default function Main() {
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
             방향 (Direction)
           </div>
-          <DirectionDisplay dir={DIRECTIONS[dirIdx]} />
+          {dirIdx !== null ? (
+            <DirectionDisplay dir={DIRECTIONS[dirIdx]} />
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2 h-40">
+              <span className="text-4xl font-bold text-muted-foreground">--</span>
+              <span className="text-xs text-muted-foreground">운행 시작 후 측정</span>
+            </div>
+          )}
         </motion.div>
       </div>
 
