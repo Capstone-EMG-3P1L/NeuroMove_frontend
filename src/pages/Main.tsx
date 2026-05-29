@@ -210,33 +210,18 @@ export default function Main() {
   const [userLoading, setUserLoading] = useState(false);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
 
-  // 페이지 진입 시 기존 활성 세션 확인
+  // 페이지 진입 시 디바이스/프로필 정보 로드
   useEffect(() => {
-    const user = getUser();
-    if (user?.activeSessionId) {
-      setSessionId(user.activeSessionId);
-      setIsActive(true);
-      setUserLoading(false);
-    } else {
-      // 서버에서 활성 세션 확인
-      userApi.me().then((me) => {
-        const patch: Record<string, string | undefined> = {};
-        if (me.registeredEmgDevice?.emgDeviceId)
-          patch.emgDeviceId = me.registeredEmgDevice.emgDeviceId;
-        if (me.registeredMotorDevice?.motorDeviceId)
-          patch.motorDeviceId = me.registeredMotorDevice.motorDeviceId;
-        if (me.activeCalibrationProfile?.profileId)
-          patch.profileId = me.activeCalibrationProfile.profileId;
-        if (Object.keys(patch).length > 0) updateUser(patch);
-
-        if (me.activeSession?.sessionId) {
-          const sid = me.activeSession.sessionId;
-          setSessionId(sid);
-          updateUser({ activeSessionId: sid });
-          setIsActive(true);
-        }
-      }).catch(() => {}).finally(() => setUserLoading(false));
-    }
+    userApi.me().then((me) => {
+      const patch: Record<string, string | undefined> = {};
+      if (me.registeredEmgDevice?.emgDeviceId)
+        patch.emgDeviceId = me.registeredEmgDevice.emgDeviceId;
+      if (me.registeredMotorDevice?.motorDeviceId)
+        patch.motorDeviceId = me.registeredMotorDevice.motorDeviceId;
+      if (me.activeCalibrationProfile?.profileId)
+        patch.profileId = me.activeCalibrationProfile.profileId;
+      if (Object.keys(patch).length > 0) updateUser(patch);
+    }).catch(() => {});
   }, []);
 
   // 세션 시작/종료 처리
