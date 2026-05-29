@@ -76,7 +76,7 @@ export default function CalibrationStep2() {
             disabled={loading}
             data-testid="button-step2"
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "한쪽을 바라봐주세요"}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "정면을 바라봐주세요"}
           </Button>
         </div>
       </motion.div>
