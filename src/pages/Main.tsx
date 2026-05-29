@@ -207,6 +207,7 @@ export default function Main() {
   const [isActive, setIsActive] = useState(false);
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
   const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
+  const [userLoading, setUserLoading] = useState(true);
   const tickRef = useRef(0);
   const fallbackRef = useRef<number | null>(null);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
@@ -217,6 +218,7 @@ export default function Main() {
     if (user?.activeSessionId) {
       setSessionId(user.activeSessionId);
       setIsActive(true);
+      setUserLoading(false);
     } else {
       // 서버에서 활성 세션 확인
       userApi.me().then((me) => {
@@ -235,7 +237,7 @@ export default function Main() {
           updateUser({ activeSessionId: sid });
           setIsActive(true);
         }
-      }).catch(() => {});
+      }).catch(() => {}).finally(() => setUserLoading(false));
     }
   }, []);
 
@@ -262,14 +264,17 @@ export default function Main() {
       const emgDeviceId = user?.emgDeviceId;
       const motorDeviceId = user?.motorDeviceId;
 
-      if (profileId && emgDeviceId && motorDeviceId) {
-        try {
-          const res = await sessionApi.start(profileId, emgDeviceId, motorDeviceId);
-          setSessionId(res.sessionId);
-          updateUser({ activeSessionId: res.sessionId });
-        } catch {
-          // 백엔드 미연결 시 데모 세션 ID 사용
-        }
+      if (!profileId || !emgDeviceId || !motorDeviceId) {
+        alert("캘리브레이션이 완료되지 않았습니다. 먼저 캘리브레이션을 진행해주세요.");
+        return;
+      }
+      try {
+        const res = await sessionApi.start(profileId, emgDeviceId, motorDeviceId);
+        setSessionId(res.sessionId);
+        updateUser({ activeSessionId: res.sessionId });
+      } catch (e) {
+        alert(`세션 시작 실패: ${e instanceof Error ? e.message : "서버 연결 오류"}`);
+        return;
       }
       setIsActive(true);
     }
@@ -371,12 +376,13 @@ export default function Main() {
               isActive
                 ? "bg-green-50 border-green-200 text-green-700"
                 : "bg-muted border-border text-muted-foreground"
-            }`}
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
             onClick={handleToggleActive}
+            disabled={userLoading}
             data-testid="btn-toggle-live"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-            {isActive ? "Live" : "운행 시작"}
+            {userLoading ? "로딩 중..." : isActive ? "Live" : "운행 시작"}
           </button>
         </div>
       </div>
