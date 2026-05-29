@@ -207,7 +207,7 @@ export default function Main() {
   const [isActive, setIsActive] = useState(false);
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
   const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
-  const [userLoading, setUserLoading] = useState(true);
+  const [userLoading, setUserLoading] = useState(false);
   const tickRef = useRef(0);
   const fallbackRef = useRef<number | null>(null);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
