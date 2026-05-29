@@ -220,6 +220,15 @@ export default function Main() {
     } else {
       // 서버에서 활성 세션 확인
       userApi.me().then((me) => {
+        const patch: Record<string, string | undefined> = {};
+        if (me.registeredEmgDevice?.emgDeviceId)
+          patch.emgDeviceId = me.registeredEmgDevice.emgDeviceId;
+        if (me.registeredMotorDevice?.motorDeviceId)
+          patch.motorDeviceId = me.registeredMotorDevice.motorDeviceId;
+        if (me.activeCalibrationProfile?.profileId)
+          patch.profileId = me.activeCalibrationProfile.profileId;
+        if (Object.keys(patch).length > 0) updateUser(patch);
+
         if (me.activeSession?.sessionId) {
           const sid = me.activeSession.sessionId;
           setSessionId(sid);
