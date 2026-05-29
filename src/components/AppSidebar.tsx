@@ -71,7 +71,7 @@ export function AppSidebar({ onLogout }: AppSidebarProps) {
             onClick={() => setLocation("/main")}
             data-testid="btn-start-drive"
           >
-            운행 시작
+            대시보드
           </Button>
         </div>
       </SidebarHeader>
