@@ -24,6 +24,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { clearUser, getUser } from "@/lib/userStore";
 import { disconnectStomp } from "@/lib/websocket";
+import { SessionProvider } from "@/lib/sessionContext";
 
 const queryClient = new QueryClient();
 
@@ -53,14 +54,16 @@ function ProtectedLayout({
   }
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen w-full overflow-hidden bg-background">
-        <AppSidebar onLogout={onLogout} />
-        <main className="flex-1 overflow-auto">
-          {children}
-        </main>
-      </div>
-    </SidebarProvider>
+    <SessionProvider>
+      <SidebarProvider>
+        <div className="flex h-screen w-full overflow-hidden bg-background">
+          <AppSidebar onLogout={onLogout} />
+          <main className="flex-1 overflow-auto">
+            {children}
+          </main>
+        </div>
+      </SidebarProvider>
+    </SessionProvider>
   );
 }
 

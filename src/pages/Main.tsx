@@ -12,8 +12,9 @@ import {
   WifiOff,
 } from "lucide-react";
 import { getStompClient } from "@/lib/websocket";
-import { sessionApi, userApi } from "@/lib/api";
-import { getUser, updateUser } from "@/lib/userStore";
+import { userApi } from "@/lib/api";
+import { updateUser } from "@/lib/userStore";
+import { useSession } from "@/lib/sessionContext";
 
 type Direction = "직진" | "왼쪽" | "오른쪽" | "정지";
 
@@ -204,10 +205,17 @@ export default function Main() {
   const [, setLocation] = useLocation();
   const [riskScore, setRiskScore] = useState<number | null>(null);
   const [dirIdx, setDirIdx] = useState<number | null>(null);
-  const [isActive, setIsActive] = useState(false);
   const [wsState, setWsState] = useState<"idle" | "connecting" | "connected" | "offline">("idle");
-  const [sessionId, setSessionId] = useState<string | null>(getUser()?.activeSessionId ?? null);
   const unsubscribeRef = useRef<(() => void) | undefined>(undefined);
+  const { isActive, sessionId } = useSession();
+
+  // 세션 종료 시 측정값 초기화
+  useEffect(() => {
+    if (!isActive) {
+      setRiskScore(null);
+      setDirIdx(null);
+    }
+  }, [isActive]);
 
   // 페이지 진입 시 디바이스/프로필 정보 로드
   useEffect(() => {
@@ -222,46 +230,6 @@ export default function Main() {
       if (Object.keys(patch).length > 0) updateUser(patch);
     }).catch(() => {});
   }, []);
-
-  // 세션 시작/종료 처리
-  const handleToggleActive = async () => {
-    console.log("[handleToggleActive] called, isActive:", isActive);
-    if (isActive) {
-      // 세션 종료
-      if (sessionId) {
-        try {
-          await sessionApi.end(sessionId, "USER_REQUEST");
-        } catch {
-          // 실패해도 UI는 종료
-        }
-        updateUser({ activeSessionId: undefined });
-        setSessionId(null);
-      }
-      setIsActive(false);
-      setRiskScore(null);
-      setDirIdx(null);
-    } else {
-      // 세션 시작
-      const user = getUser();
-      const profileId = user?.profileId;
-      const emgDeviceId = user?.emgDeviceId;
-      const motorDeviceId = user?.motorDeviceId;
-
-      if (!profileId || !emgDeviceId || !motorDeviceId) {
-        alert("캘리브레이션이 완료되지 않았습니다. 먼저 캘리브레이션을 진행해주세요.");
-        return;
-      }
-      try {
-        const res = await sessionApi.start(profileId, emgDeviceId, motorDeviceId);
-        setSessionId(res.sessionId);
-        updateUser({ activeSessionId: res.sessionId });
-      } catch (e) {
-        alert(`세션 시작 실패: ${e instanceof Error ? e.message : "서버 연결 오류"}`);
-        return;
-      }
-      setIsActive(true);
-    }
-  };
 
   // ---- WebSocket(STOMP) 연결 ----
   useEffect(() => {
@@ -327,18 +295,6 @@ export default function Main() {
         </div>
         <div className="flex items-center gap-2">
           <WsBadge state={wsState} />
-          <button
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-              isActive
-                ? "bg-green-50 border-green-200 text-green-700"
-                : "bg-muted border-border text-muted-foreground"
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            onClick={handleToggleActive}
-            data-testid="btn-toggle-live"
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
-            {isActive ? "Live" : "운행 시작"}
-          </button>
         </div>
       </div>
 

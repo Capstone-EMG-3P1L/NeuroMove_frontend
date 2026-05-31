@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
 import { User, Brain } from "lucide-react";
 import { getUser } from "@/lib/userStore";
+import { useSession } from "@/lib/sessionContext";
 
 interface AppSidebarProps {
   onLogout?: () => void;
@@ -18,6 +19,7 @@ interface AppSidebarProps {
 export function AppSidebar({ onLogout }: AppSidebarProps) {
   const [, setLocation] = useLocation();
   const user = getUser();
+  const { isActive, handleToggleActive } = useSession();
 
   return (
     <Sidebar className="border-r border-border bg-sidebar h-full w-52">
@@ -72,6 +74,15 @@ export function AppSidebar({ onLogout }: AppSidebarProps) {
             data-testid="btn-start-drive"
           >
             대시보드
+          </Button>
+          <Button
+            variant={isActive ? "destructive" : "default"}
+            className="w-full text-xs h-9"
+            onClick={handleToggleActive}
+            data-testid="btn-toggle-session"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${isActive ? "bg-white animate-pulse" : "bg-white/60"}`} />
+            {isActive ? "운행 종료" : "운행 시작"}
           </Button>
         </div>
       </SidebarHeader>
