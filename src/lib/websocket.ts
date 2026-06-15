@@ -73,7 +73,7 @@ export class StompClient {
   private reconnectTimeout: number | null = null;
   private shouldReconnect = true;
 
-  constructor(baseUrl: string = API_BASE_URL) {
+  constructor(baseUrl: string = "https://neuromove.cloud") {
     this.url = `${toWsUrl(baseUrl)}/ws`;
   }
 
